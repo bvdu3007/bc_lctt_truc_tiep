@@ -1,0 +1,33 @@
+Example flow: How OAuth 2 works connecting SAP Cloud Platform and S/4HANA Cloud
+
+Let us come back to the use case we illustrated above: We have a cloud app that enables our employees to manage product master data. When one user launches the app, the app obtains a list of product master data from S/4HANA Cloud by an OData call.
+
+During the product master retrieval, the following components are involved:
+
+SAP Cloud Identity Tenant
+
+SAP Cloud Platform Local Service Provider
+
+SAP Cloud Platform Destination Service
+
+SAP Cloud Platform Application for Product Master Maintenance (the "cloud app")
+
+S/4HANA Cloud Token Endpoint
+
+S/4HANA Cloud Product Master OData API
+
+
+Recapping the OAuth 2 theory from above, the involved components map as follows to the OAuth 2 terms:
+Once your cloud app is about to generate the OData request, it utilizes an HTTP destination that uses the authentication method OAuth2SAMLBearerAssertion. This HTTP destination is configured inside the SAP Cloud Platform consumer account. The destination service on SAP Cloud Platform resolves this destination and notices that OAuth 2 SAML Bearer Assertion flow should be used.
+
+For this purpose the local service provider of your SAP Cloud Platform account issues a SAML assertion whereas it considers the identity of the currently logged on user. This identity was formerly retrieved from the SAP Cloud Platform Identity tenant that is connected to the respective SAP Cloud Platform consumer account.
+
+Assume that John Smith has launched the cloud app, then (depending on the configuration) for instance the mail address john.smith@example.com is put into the field "name id" of the SAML assertion. Once the assertion is generated, the local service provider signs it by its private key.
+
+The destination service then sends one HTTP POST request to the token endpoint of the S/4HANA Cloud system whose host name is specified inside the HTTP destination. In this step we authenticate at the token endpoint using the communication user credentials (i.e. user name and password). This requests contains amongst others the SAML assertion as base64 encoded string along with the OAuth 2 scope which corresponds to the target service in your S/4HANA Cloud system.
+
+Once the token endpoint has received the request, it firstly validates the authenticity and integrity of the SAML assertion by verifying the digital signature. This assumes that the S/4HANA Cloud system trusts the local service provider. This trust relationship is established by providing the certificate of the local service provider to S/4HANA cloud during the configuration. Once the SAML assertion is considered authentic and integer, the contained name id value is extracted.
+
+Subsequently the token endpoint searches for a business user in the system that has the e-mail address john.smith@example.com. If it is found, it conducts few more checks including business authorizations. If all checks are considered OK, then the token endpoint sends an HTTP response containing the OAuth access token.
+
+Considering the OAuth access token the destination service then sends a second HTTP request to the product master API and passes the access token in the authorization header. Retrieving the access token the S/4HANA Cloud system knows which business user it belongs to and invokes the product master API.
